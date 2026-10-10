@@ -1,0 +1,43 @@
+name: mini
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-secret}
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      retries: 3
+      start_period: 5s
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks: [lab]
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        VER: ${VER:-1}
+    image: mini/web:${TAG:-dev}
+    container_name: mini-web
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    environment:
+      GREETING: "hello world"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    networks: [lab]
+  extra:
+    image: busybox:1.36
+    profiles: ["tools"]
+    command: ["sleep", "infinity"]
+    networks: [lab]
+volumes:
+  dbdata:
+networks:
+  lab:
+    driver: bridge
